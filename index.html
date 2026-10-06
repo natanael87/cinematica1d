@@ -3,68 +3,90 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cinemática 1D con aceleración constante</title>
+<title>Cinemática 1D: x(t) arbitraria</title>
+<script>
+  window.MathJax = {tex:{inlineMath:[['\\(','\\)']], displayMath:[['\\[','\\]']]}, svg:{fontCache:'global'}};
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjs@12/lib/browser/math.js"></script>
 <style>
-  :root{--x:#2563eb;--v:#16a34a;--a:#dc2626;--bg:#f1f5f9;--ink:#0f172a;--grid:#e2e8f0}
+  :root{--grid:#e2e8f0;--bg:#f1f5f9;--ink:#0f172a}
   *{box-sizing:border-box}
   body{margin:0;padding:16px;font-family:system-ui,Segoe UI,sans-serif;background:var(--bg);color:var(--ink);
        display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
-  #side{flex:1 1 300px;max-width:380px}
+  h1{font-size:18px;margin:0 0 4px;width:100%}
+  #side{flex:1 1 320px;max-width:400px}
   #main{flex:3 1 520px;min-width:0}
   .card{background:#fff;border:1px solid var(--grid);border-radius:10px;padding:12px 14px;margin-bottom:12px}
-  h1{font-size:18px;margin:0 0 12px;width:100%}
-  h2{font-size:14px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.04em;color:#475569}
-  label{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:6px 0;font-size:14px}
-  input[type=number]{width:90px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px}
+  h2{font-size:13px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.04em;color:#475569}
+  input[type=text],input[type=number]{padding:6px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px}
+  #fn{width:100%;font-family:Consolas,monospace;font-size:15px}
+  input[type=number]{width:80px}
   input[type=range]{width:100%}
   button,select{padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;background:#f8fafc;cursor:pointer;font-size:13px}
   button:hover{background:#e2e8f0}
-  .row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  button.go{background:#2563eb;color:#fff;border-color:#2563eb}
+  .row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px}
+  label.ck{display:flex;justify-content:space-between;font-size:14px;margin-top:8px}
   canvas{width:100%;display:block;background:#fff;border:1px solid var(--grid);border-radius:8px;margin-bottom:8px;touch-action:none}
-  #cT{height:150px;cursor:default}
+  #cT{height:190px}
   .gr{height:175px;cursor:ew-resize}
+  #tex{overflow-x:auto;font-size:15px}
+  #tex mjx-container{margin:6px 0!important}
   table{width:100%;border-collapse:collapse;font-size:13px}
-  td{padding:4px 2px;border-bottom:1px solid var(--grid);vertical-align:top}
-  .cx{color:var(--x)}.cv{color:var(--v)}.ca{color:var(--a)}
+  td,th{padding:4px 3px;border-bottom:1px solid var(--grid);text-align:left}
+  #msg{color:#dc2626;font-size:13px;min-height:16px;margin-top:6px}
   .small{font-size:12px;color:#64748b;margin-top:6px}
 </style>
 </head>
 <body>
-<h1>Cinemática 1D con aceleración constante</h1>
+<h1>Cinemática 1D: introduce cualquier x(t)</h1>
 
 <div id="side">
   <div class="card">
-    <h2>Parámetros</h2>
-    <label>Posición inicial x₀ (m) <input id="x0" type="number" step="0.5" value="0"></label>
-    <label>Velocidad inicial v₀ (m/s) <input id="v0" type="number" step="0.5" value="10"></label>
-    <label>Aceleración a (m/s²) <input id="a" type="number" step="0.5" value="-4"></label>
-    <label>Tiempo total T (s) <input id="T" type="number" step="1" min="1" value="6"></label>
+    <h2>Función x(t)</h2>
+    <input id="fn" type="text" value="0.4*t^3 - 3*t^2 + 5*t" spellcheck="false">
     <div class="row">
-      <button data-p="0,0,2,10">Desde el reposo</button>
-      <button data-p="0,10,-4,6">Inversión de sentido</button>
-      <button data-p="0,3,0,10">Velocidad constante</button>
+      <span>t de</span><input id="t0" type="number" value="0" step="1">
+      <span>a</span><input id="t1" type="number" value="8" step="1">
+      <button class="go" id="apply">Graficar</button>
+    </div>
+    <div id="msg"></div>
+    <div class="row">
+      <button data-f="2 + 3*t - 0.5*t^2" data-r="0,10">Parábola</button>
+      <button data-f="4*sin(1.2*t)" data-r="0,10">Oscilación</button>
+      <button data-f="6*exp(-0.3*t)*cos(2*t)" data-r="0,12">Amortiguado</button>
+      <button data-f="0.4*t^3 - 3*t^2 + 5*t" data-r="0,8">Cúbica</button>
+    </div>
+    <div class="small">Sintaxis: <code>^</code> potencia, <code>*</code> producto, <code>sin cos tan exp log sqrt abs</code>, <code>pi</code>, <code>e</code>. Variable: <code>t</code>.</div>
+  </div>
+
+  <div class="card">
+    <h2>Ecuaciones</h2>
+    <div id="tex"></div>
+    <div id="rel">
+      \[ v=\frac{dx}{dt},\qquad a=\frac{dv}{dt}=\frac{d^2x}{dt^2} \]
+      \[ \Delta x=\int_{t_0}^{t} v\,dt,\qquad \Delta v=\int_{t_0}^{t} a\,dt \]
     </div>
   </div>
 
   <div class="card">
     <h2>Tiempo</h2>
-    <input id="ts" type="range" min="0" max="6" step="0.001" value="0">
+    <input id="ts" type="range" min="0" max="8" step="0.001" value="0">
     <div class="row">
       <button id="play">▶ Reproducir</button>
       <button id="reset">⟲ Reiniciar</button>
-      <select id="speed">
-        <option value="0.25">0.25×</option><option value="0.5">0.5×</option>
-        <option value="1" selected>1×</option><option value="2">2×</option>
-      </select>
+      <select id="speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option>
+        <option value="1" selected>1×</option><option value="2">2×</option></select>
     </div>
-    <label style="margin-top:10px"><span>Mostrar pendientes (derivadas)</span><input id="shS" type="checkbox" checked></label>
-    <label><span>Mostrar áreas (integrales)</span><input id="shA" type="checkbox" checked></label>
-    <div class="small">También puedes hacer clic o arrastrar sobre cualquiera de las tres gráficas.</div>
+    <label class="ck"><span>Mostrar pendientes (derivadas)</span><input id="shS" type="checkbox" checked></label>
+    <label class="ck"><span>Mostrar áreas (integrales)</span><input id="shA" type="checkbox" checked></label>
+    <div class="small">Haz clic o arrastra sobre cualquier gráfica para mover el tiempo.</div>
   </div>
 
   <div class="card">
-    <h2>Ecuaciones en el instante t</h2>
-    <table id="eq"></table>
+    <h2>Valores en el instante t</h2>
+    <table id="live"></table>
   </div>
 </div>
 
@@ -77,17 +99,12 @@
 
 <script>
 const $ = id => document.getElementById(id);
-const P = {x0:0, v0:10, a:-4, T:6};          // parámetros físicos
-let t = 0, playing = false, last = 0, drag = false, R;
-const M = {l:62, r:18, t:14, b:26};           // márgenes iguales => los tiempos quedan alineados
+const M = {l:62, r:18, t:14, b:26};
+const N = 500;
+let S = null, t = 0, playing = false, last = 0, drag = false, dir = 1;
 
-// Modelo físico
-const X = s => P.x0 + P.v0*s + 0.5*P.a*s*s;
-const V = s => P.v0 + P.a*s;
-const A = () => P.a;
-
-const f2 = n => (+n.toFixed(2)).toString();
-const pr = n => n < 0 ? `(${f2(n)})` : f2(n);
+const ev = (fn, s) => { try { const y = fn(s); return typeof y === 'number' && isFinite(y) ? y : NaN; } catch(e){ return NaN; } };
+const fmt = n => isFinite(n) ? (+n.toFixed(3)).toString() : '—';
 function nice(range, n){
   const s = range/n, p = Math.pow(10, Math.floor(Math.log10(s))), q = s/p;
   return (q < 1.5 ? 1 : q < 3.5 ? 2 : q < 7.5 ? 5 : 10) * p;
@@ -99,67 +116,123 @@ function setup(c){
   return {g, w:r.width, h:r.height};
 }
 
-// Rangos de cada eje (incluye el punto donde v = 0 para ver el vértice de x(t))
-function ranges(){
-  const ts = [0, P.T];
-  if (P.a !== 0){ const tv = -P.v0/P.a; if (tv > 0 && tv < P.T) ts.push(tv); }
-  const xs = ts.map(X), vs = [V(0), V(P.T)];
-  const pad = (lo, hi) => { if (hi - lo < 1e-9){ lo -= 1; hi += 1; } const p = (hi-lo)*0.12; return [lo-p, hi+p]; };
-  return {
-    x: pad(Math.min(...xs), Math.max(...xs)),
-    v: pad(Math.min(0,...vs), Math.max(0,...vs)),
-    a: pad(Math.min(0,P.a), Math.max(0,P.a))
+// ---------- Construcción del modelo a partir del texto ----------
+function build(){
+  const src = $('fn').value.replace(/^\s*x\s*\(\s*t\s*\)\s*=/i, '').trim();
+  const t0 = +$('t0').value, t1 = +$('t1').value, msg = $('msg');
+  msg.textContent = '';
+  if (!(t1 > t0)){ msg.textContent = 'Se requiere t final > t inicial.'; return; }
+  let node, code;
+  try {
+    node = math.parse(src); code = node.compile();
+    if (typeof code.evaluate({t:t0}) !== 'number') throw new Error('La expresión debe dar un número real.');
+  } catch(e){ msg.textContent = 'Error: ' + e.message; return; }
+
+  const fx = s => code.evaluate({t:s});
+  let fv, fa, tv, ta;
+  try {   // derivación simbólica
+    const dn = math.simplify(math.derivative(node, 't'));
+    const ddn = math.simplify(math.derivative(dn, 't'));
+    const cv = dn.compile(), ca = ddn.compile();
+    fv = s => cv.evaluate({t:s}); fa = s => ca.evaluate({t:s});
+    tv = dn.toTex(); ta = ddn.toTex();
+  } catch(e){   // respaldo: derivadas numéricas
+    const h = 1e-3;
+    fv = s => (fx(s+h) - fx(s-h)) / (2*h);
+    fa = s => (fx(s+h) - 2*fx(s) + fx(s-h)) / (h*h);
+    tv = ta = '\\text{(derivada numérica)}';
+  }
+  const ts = [], xs = [], vs = [], as = [];
+  for (let i = 0; i <= N; i++){
+    const s = t0 + (t1-t0)*i/N;
+    ts.push(s); xs.push(ev(fx,s)); vs.push(ev(fv,s)); as.push(ev(fa,s));
+  }
+  const rg = (arr, zero) => {
+    const a = arr.filter(isFinite);
+    let lo = Math.min(zero ? 0 : Infinity, ...a), hi = Math.max(zero ? 0 : -Infinity, ...a);
+    if (!isFinite(lo) || !isFinite(hi)){ lo = -1; hi = 1; }
+    if (hi - lo < 1e-9){ lo -= 1; hi += 1; }
+    const p = (hi-lo)*0.12; return [lo-p, hi+p];
   };
+  S = {fx, fv, fa, t0, t1, ts, xs, vs, as,
+       R:{x:rg(xs), v:rg(vs,1), a:rg(as,1)},
+       vmax:Math.max(1e-9, ...vs.filter(isFinite).map(Math.abs)),
+       amax:Math.max(1e-9, ...as.filter(isFinite).map(Math.abs))};
+  t = t0; stop(); $('ts').min = t0; $('ts').max = t1;
+
+  $('tex').innerHTML =
+    `\\[{\\color{#2563eb} x(t)=${node.toTex()}}\\]` +
+    `\\[{\\color{#16a34a} v(t)=\\frac{dx}{dt}=${tv}}\\]` +
+    `\\[{\\color{#dc2626} a(t)=\\frac{d^2x}{dt^2}=${ta}}\\]`;
+  if (window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise([$('tex')]);
+  drawAll();
+}
+
+// ---------- Coche ----------
+function car(g, cx, y0, d, rot){
+  g.save(); g.translate(cx, y0); g.scale(d, 1);
+  g.fillStyle = '#ef4444'; g.beginPath(); g.roundRect(-30, -22, 60, 14, 5); g.fill();
+  g.fillStyle = '#dc2626'; g.beginPath();
+  g.moveTo(-17,-22); g.lineTo(-10,-34); g.lineTo(10,-34); g.lineTo(19,-22); g.closePath(); g.fill();
+  g.fillStyle = '#bae6fd';
+  g.beginPath(); g.moveTo(-13,-23); g.lineTo(-9,-31); g.lineTo(-1,-31); g.lineTo(-1,-23); g.closePath(); g.fill();
+  g.beginPath(); g.moveTo(2,-23); g.lineTo(2,-31); g.lineTo(9,-31); g.lineTo(14,-23); g.closePath(); g.fill();
+  g.fillStyle = '#fde047'; g.fillRect(26,-19,4,5);
+  g.fillStyle = '#7f1d1d'; g.fillRect(-30,-19,3,5);
+  for (const wx of [-18, 18]){
+    g.save(); g.translate(wx, -7); g.rotate(rot);
+    g.fillStyle = '#1e293b'; g.beginPath(); g.arc(0,0,7,0,7); g.fill();
+    g.strokeStyle = '#cbd5e1'; g.lineWidth = 1.5;
+    for (let k = 0; k < 3; k++){ g.rotate(Math.PI/3); g.beginPath(); g.moveTo(-5,0); g.lineTo(5,0); g.stroke(); }
+    g.restore();
+  }
+  g.restore();
+}
+function arrow(g, x, y, len, col, name){
+  g.strokeStyle = g.fillStyle = col; g.lineWidth = 3; g.font = 'bold 13px system-ui'; g.textBaseline = 'middle';
+  if (!isFinite(len) || Math.abs(len) < 2){ g.beginPath(); g.arc(x,y,3,0,7); g.fill(); g.textAlign = 'left'; g.fillText(name+' ≈ 0', x+8, y); return; }
+  const d = Math.sign(len);
+  g.beginPath(); g.moveTo(x,y); g.lineTo(x+len,y); g.stroke();
+  g.beginPath(); g.moveTo(x+len,y); g.lineTo(x+len-9*d,y-5); g.lineTo(x+len-9*d,y+5); g.closePath(); g.fill();
+  g.textAlign = d > 0 ? 'right' : 'left'; g.fillText(name, x - 6*d, y);
 }
 
 // ---------- Trayectoria ----------
 function drawTray(){
   const {g, w, h} = setup($('cT'));
-  const [lo, hi] = R.x, pw = w - M.l - M.r;
-  const sx = x => M.l + (x-lo)/(hi-lo)*pw, y0 = h*0.68;
+  const [lo, hi] = S.R.x, pw = w - M.l - M.r;
+  const sx = x => M.l + (x-lo)/(hi-lo)*pw, y0 = h*0.64;
+  g.fillStyle = '#cbd5e1'; g.fillRect(M.l, y0, pw, 8);
+  g.strokeStyle = '#fff'; g.lineWidth = 1.5; g.setLineDash([8,8]);
+  g.beginPath(); g.moveTo(M.l, y0+4); g.lineTo(w-M.r, y0+4); g.stroke(); g.setLineDash([]);
   g.font = '11px system-ui'; g.textAlign = 'center'; g.textBaseline = 'top';
-  g.strokeStyle = '#94a3b8'; g.lineWidth = 1.5;
-  g.beginPath(); g.moveTo(M.l, y0); g.lineTo(w-M.r, y0); g.stroke();
-  const st = nice(hi-lo, 8);
+  const st = nice(hi-lo, 8); g.strokeStyle = '#94a3b8'; g.lineWidth = 1;
   for (let k = Math.ceil(lo/st); k*st <= hi; k++){
-    const x = k*st; g.beginPath(); g.moveTo(sx(x), y0-4); g.lineTo(sx(x), y0+4); g.stroke();
-    g.fillStyle = '#64748b'; g.fillText(+x.toFixed(4), sx(x), y0+8);
+    const x = k*st; g.beginPath(); g.moveTo(sx(x), y0+8); g.lineTo(sx(x), y0+13); g.stroke();
+    g.fillStyle = '#64748b'; g.fillText(+x.toFixed(4), sx(x), y0+15);
   }
-  g.textAlign = 'left'; g.fillStyle = '#334155'; g.fillText('x (m)', 6, y0-6);
-  g.fillText('Trayectoria', 6, 6);
-  // posiciones a intervalos regulares (estroboscópico)
-  const dt = nice(P.T, 10);
-  for (let k = 0; k*dt <= P.T + 1e-9; k++){
-    const s = k*dt; g.beginPath(); g.arc(sx(X(s)), y0, 4, 0, 7);
-    g.fillStyle = s <= t ? '#2563eb' : '#cbd5e1'; g.fill();
+  g.textAlign = 'left'; g.fillStyle = '#334155'; g.fillText('x (m)', 6, y0+2); g.fillText('Trayectoria', 6, 6);
+  // posiciones a intervalos regulares
+  const dt = (S.t1 - S.t0)/10;
+  for (let k = 0; k <= 10; k++){
+    const s = S.t0 + k*dt, x = ev(S.fx, s); if (!isFinite(x)) continue;
+    g.beginPath(); g.arc(sx(x), y0+4, 3.5, 0, 7); g.fillStyle = s <= t + 1e-9 ? '#2563eb' : '#94a3b8'; g.fill();
   }
-  // objeto
-  const xo = sx(X(t));
-  g.beginPath(); g.arc(xo, y0, 11, 0, 7); g.fillStyle = '#f59e0b'; g.fill();
-  g.strokeStyle = '#92400e'; g.lineWidth = 2; g.stroke();
-  // flechas (longitud relativa al máximo de cada magnitud)
-  const L = Math.min(w*0.2, 100);
-  const vmax = Math.max(Math.abs(V(0)), Math.abs(V(P.T)), 1e-9);
-  arrow(g, xo, y0-26, V(t)/vmax*L, '#16a34a', 'v');
-  arrow(g, xo, y0-48, P.a === 0 ? 0 : Math.sign(P.a)*L, '#dc2626', 'a');
-}
-function arrow(g, x, y, len, col, name){
-  g.strokeStyle = g.fillStyle = col; g.lineWidth = 3;
-  g.font = 'bold 13px system-ui'; g.textBaseline = 'middle';
-  if (Math.abs(len) < 2){ g.beginPath(); g.arc(x, y, 3, 0, 7); g.fill(); g.textAlign = 'left'; g.fillText(name+' = 0', x+8, y); return; }
-  const d = Math.sign(len);
-  g.beginPath(); g.moveTo(x, y); g.lineTo(x+len, y); g.stroke();
-  g.beginPath(); g.moveTo(x+len, y); g.lineTo(x+len-9*d, y-5); g.lineTo(x+len-9*d, y+5); g.closePath(); g.fill();
-  g.textAlign = d > 0 ? 'right' : 'left'; g.fillText(name, x - 6*d, y);
+  const x = ev(S.fx, t), v = ev(S.fv, t), a = ev(S.fa, t);
+  if (!isFinite(x)) return;
+  if (v > 1e-9) dir = 1; else if (v < -1e-9) dir = -1;
+  const xo = sx(x), L = Math.min(w*0.2, 100);
+  car(g, xo, y0, dir, xo/7);
+  arrow(g, xo, y0-50, v/S.vmax*L, '#16a34a', 'v');
+  arrow(g, xo, y0-72, a/S.amax*L, '#dc2626', 'a');
 }
 
-// ---------- Gráficas f(t) ----------
-function graph(c, f, rng, col, name, unit, o){
+// ---------- Gráficas ----------
+function graph(c, arr, fn, rng, col, name, unit, o){
   const {g, w, h} = setup(c);
-  const [lo, hi] = rng, pw = w-M.l-M.r, ph = h-M.t-M.b;
-  const sx = u => M.l + u/P.T*pw, sy = y => M.t + (hi-y)/(hi-lo)*ph;
+  const [lo, hi] = rng, {t0, t1} = S, pw = w-M.l-M.r, ph = h-M.t-M.b;
+  const sx = u => M.l + (u-t0)/(t1-t0)*pw, sy = y => M.t + (hi-y)/(hi-lo)*ph;
   g.font = '11px system-ui';
-  // cuadrícula horizontal
   const sy_ = nice(hi-lo, 4); g.textAlign = 'right'; g.textBaseline = 'middle';
   for (let k = Math.ceil(lo/sy_); k*sy_ <= hi; k++){
     const y = k*sy_, z = k === 0;
@@ -167,72 +240,71 @@ function graph(c, f, rng, col, name, unit, o){
     g.beginPath(); g.moveTo(M.l, sy(y)); g.lineTo(w-M.r, sy(y)); g.stroke();
     g.fillStyle = '#64748b'; g.fillText(+y.toFixed(4), M.l-6, sy(y));
   }
-  // cuadrícula vertical (tiempo compartido)
-  const st = nice(P.T, 10); g.textAlign = 'center'; g.textBaseline = 'top';
-  for (let k = 0; k*st <= P.T + 1e-9; k++){
-    g.strokeStyle = '#e2e8f0'; g.lineWidth = 1;
-    g.beginPath(); g.moveTo(sx(k*st), M.t); g.lineTo(sx(k*st), M.t+ph); g.stroke();
-    g.fillStyle = '#64748b'; g.fillText(+(k*st).toFixed(4), sx(k*st), M.t+ph+5);
+  const st = nice(t1-t0, 10); g.textAlign = 'center'; g.textBaseline = 'top';
+  for (let k = Math.ceil(t0/st); k*st <= t1 + 1e-9; k++){
+    const u = k*st; g.strokeStyle = '#e2e8f0'; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(sx(u), M.t); g.lineTo(sx(u), M.t+ph); g.stroke();
+    g.fillStyle = '#64748b'; g.fillText(+u.toFixed(4), sx(u), M.t+ph+5);
   }
   g.textAlign = 'right'; g.fillStyle = '#64748b'; g.fillText('t (s)', w-M.r, M.t+ph+5);
   g.save(); g.translate(13, M.t+ph/2); g.rotate(-Math.PI/2); g.textAlign = 'center'; g.textBaseline = 'middle';
   g.fillStyle = col; g.font = 'bold 12px system-ui'; g.fillText(`${name}(t)  [${unit}]`, 0, 0); g.restore();
 
-  // área bajo la curva (integral) de 0 a t
-  const N = 200;
-  if (o.area && $('shA').checked && t > 0){
-    g.fillStyle = col + '33'; g.beginPath(); g.moveTo(sx(0), sy(0));
-    for (let i = 0; i <= N; i++){ const u = t*i/N; g.lineTo(sx(u), sy(f(u))); }
-    g.lineTo(sx(t), sy(0)); g.closePath(); g.fill();
+  if (o.area && $('shA').checked && t > t0){        // integral: área de t0 a t
+    g.fillStyle = col + '33'; g.beginPath(); g.moveTo(sx(t0), sy(0));
+    for (let i = 0; i <= N && S.ts[i] <= t; i++){ const y = arr[i]; g.lineTo(sx(S.ts[i]), sy(isFinite(y) ? y : 0)); }
+    g.lineTo(sx(t), sy(ev(fn,t) || 0)); g.lineTo(sx(t), sy(0)); g.closePath(); g.fill();
   }
-  // curva
-  g.strokeStyle = col; g.lineWidth = 2.5; g.beginPath();
-  for (let i = 0; i <= N; i++){ const u = P.T*i/N; i ? g.lineTo(sx(u), sy(f(u))) : g.moveTo(sx(u), sy(f(u))); }
+  g.strokeStyle = col; g.lineWidth = 2.5; g.beginPath(); let pen = false;
+  for (let i = 0; i <= N; i++){
+    const y = arr[i];
+    if (!isFinite(y)){ pen = false; continue; }
+    pen ? g.lineTo(sx(S.ts[i]), sy(y)) : g.moveTo(sx(S.ts[i]), sy(y)); pen = true;
+  }
   g.stroke();
-  // recta tangente (derivada)
-  if (o.slope && $('shS').checked){
-    const m = o.slope(t), d = P.T*0.18, y = f(t);
-    g.save(); g.beginPath(); g.rect(M.l, M.t, pw, ph); g.clip();
-    g.strokeStyle = '#7c3aed'; g.lineWidth = 2; g.setLineDash([6,4]);
-    g.beginPath(); g.moveTo(sx(t-d), sy(y-m*d)); g.lineTo(sx(t+d), sy(y+m*d)); g.stroke(); g.restore();
+  const yt = ev(fn, t);
+  if (o.slope && $('shS').checked && isFinite(yt)){   // derivada: recta tangente
+    const m = ev(o.slope, t), d = (t1-t0)*0.18;
+    if (isFinite(m)){
+      g.save(); g.beginPath(); g.rect(M.l, M.t, pw, ph); g.clip();
+      g.strokeStyle = '#7c3aed'; g.lineWidth = 2; g.setLineDash([6,4]);
+      g.beginPath(); g.moveTo(sx(t-d), sy(yt-m*d)); g.lineTo(sx(t+d), sy(yt+m*d)); g.stroke(); g.restore();
+    }
   }
-  // cursor de tiempo
   g.strokeStyle = '#334155'; g.lineWidth = 1.2; g.setLineDash([4,3]);
   g.beginPath(); g.moveTo(sx(t), M.t); g.lineTo(sx(t), M.t+ph); g.stroke(); g.setLineDash([]);
-  g.beginPath(); g.arc(sx(t), sy(f(t)), 6, 0, 7); g.fillStyle = col; g.fill();
-  g.strokeStyle = '#fff'; g.lineWidth = 2; g.stroke();
+  if (isFinite(yt)){
+    g.beginPath(); g.arc(sx(t), sy(yt), 6, 0, 7); g.fillStyle = col; g.fill();
+    g.strokeStyle = '#fff'; g.lineWidth = 2; g.stroke();
+  }
   g.fillStyle = col; g.font = 'bold 13px system-ui'; g.textAlign = 'right'; g.textBaseline = 'top';
-  g.fillText(`${name} = ${f2(f(t))} ${unit}`, w-M.r-4, M.t+4);
+  g.fillText(`${name} = ${fmt(yt)} ${unit}`, w-M.r-4, M.t+4);
 }
 
-// ---------- Ecuaciones con valores sustituidos ----------
-function eqs(){
-  const {x0, v0, a} = P, x = X(t), v = V(t);
-  const dx = 0.5*(v0+v)*t;   // área (trapecio) bajo v(t)
-  $('eq').innerHTML = `
-  <tr><td colspan="2"><b>t = ${f2(t)} s</b></td></tr>
-  <tr><td class="cx"><b>x(t) = x₀ + v₀t + ½at²</b><br>= ${pr(x0)} + ${pr(v0)}·${f2(t)} + ½·${pr(a)}·${f2(t)}²</td>
-      <td class="cx"><b>${f2(x)} m</b></td></tr>
-  <tr><td class="cv"><b>v(t) = v₀ + at</b><br>= ${pr(v0)} + ${pr(a)}·${f2(t)}</td>
-      <td class="cv"><b>${f2(v)} m/s</b></td></tr>
-  <tr><td class="ca"><b>a(t) = a</b> (constante)</td><td class="ca"><b>${f2(a)} m/s²</b></td></tr>
-  <tr><td colspan="2" style="padding-top:10px"><b>Derivadas (pendientes)</b></td></tr>
-  <tr><td>v = dx/dt = v₀ + at</td><td>${f2(v)} m/s</td></tr>
-  <tr><td>a = dv/dt</td><td>${f2(a)} m/s²</td></tr>
-  <tr><td colspan="2" style="padding-top:10px"><b>Integrales (áreas con signo)</b></td></tr>
-  <tr><td>Δv = ∫a dt = a·t</td><td>${f2(a*t)} m/s</td></tr>
-  <tr><td>Δx = ∫v dt = ½(v₀+v)·t</td><td>${f2(dx)} m</td></tr>
-  <tr><td>x₀ + Δx = x(t)</td><td>${f2(x0+dx)} m</td></tr>`;
+// ---------- Valores en vivo (derivadas e integrales numéricas) ----------
+function live(){
+  const {t0} = S, x = ev(S.fx,t), v = ev(S.fv,t), a = ev(S.fa,t);
+  const I = fn => {
+    const n = 300, d = (t-t0)/n; if (d <= 0) return 0;
+    let s = 0; for (let i = 0; i < n; i++) s += (ev(fn,t0+i*d) + ev(fn,t0+(i+1)*d))/2*d;
+    return s;
+  };
+  $('live').innerHTML = `
+    <tr><td colspan="3"><b>t = ${fmt(t)} s</b></td></tr>
+    <tr style="color:#2563eb"><td><b>x(t)</b></td><td colspan="2"><b>${fmt(x)} m</b></td></tr>
+    <tr style="color:#16a34a"><td><b>v(t)</b> = dx/dt</td><td colspan="2"><b>${fmt(v)} m/s</b></td></tr>
+    <tr style="color:#dc2626"><td><b>a(t)</b> = d²x/dt²</td><td colspan="2"><b>${fmt(a)} m/s²</b></td></tr>
+    <tr><th></th><th>∫ (área)</th><th>diferencia</th></tr>
+    <tr><td>Δx</td><td>${fmt(I(S.fv))}</td><td>x(t)−x(t₀) = ${fmt(x - ev(S.fx,t0))}</td></tr>
+    <tr><td>Δv</td><td>${fmt(I(S.fa))}</td><td>v(t)−v(t₀) = ${fmt(v - ev(S.fv,t0))}</td></tr>`;
 }
 
-function draw(){
-  R = ranges();
+function drawAll(){
   drawTray();
-  graph($('cX'), X, R.x, '#2563eb', 'x', 'm',   {slope: V});
-  graph($('cV'), V, R.v, '#16a34a', 'v', 'm/s', {slope: A, area:true});
-  graph($('cA'), A, R.a, '#dc2626', 'a', 'm/s²',{area:true});
-  eqs();
-  $('ts').value = t;
+  graph($('cX'), S.xs, S.fx, S.R.x, '#2563eb', 'x', 'm',    {slope:S.fv});
+  graph($('cV'), S.vs, S.fv, S.R.v, '#16a34a', 'v', 'm/s',  {slope:S.fa, area:1});
+  graph($('cA'), S.as, S.fa, S.R.a, '#dc2626', 'a', 'm/s²', {area:1});
+  live(); $('ts').value = t;
 }
 
 // ---------- Interacción ----------
@@ -240,45 +312,37 @@ function stop(){ playing = false; $('play').textContent = '▶ Reproducir'; }
 function loop(now){
   if (!playing) return;
   t += (now-last)/1000 * +$('speed').value; last = now;
-  if (t >= P.T){ t = P.T; stop(); }
-  draw(); if (playing) requestAnimationFrame(loop);
+  if (t >= S.t1){ t = S.t1; stop(); }
+  drawAll(); if (playing) requestAnimationFrame(loop);
 }
 $('play').onclick = () => {
+  if (!S) return;
   if (playing){ stop(); return; }
-  if (t >= P.T) t = 0;
+  if (t >= S.t1) t = S.t0;
   playing = true; $('play').textContent = '⏸ Pausar'; last = performance.now(); requestAnimationFrame(loop);
 };
-$('reset').onclick = () => { stop(); t = 0; draw(); };
-$('ts').oninput = e => { stop(); t = +e.target.value; draw(); };
-$('shS').onchange = $('shA').onchange = draw;
-
-function readParams(){
-  P.x0 = +$('x0').value || 0; P.v0 = +$('v0').value || 0; P.a = +$('a').value || 0;
-  P.T = Math.max(1, +$('T').value || 1);
-  $('ts').max = P.T; t = Math.min(t, P.T); draw();
-}
-['x0','v0','a','T'].forEach(id => $(id).oninput = readParams);
-document.querySelectorAll('[data-p]').forEach(b => b.onclick = () => {
-  const [x0,v0,a,T] = b.dataset.p.split(',');
-  $('x0').value = x0; $('v0').value = v0; $('a').value = a; $('T').value = T;
-  stop(); t = 0; readParams();
+$('reset').onclick = () => { stop(); t = S.t0; drawAll(); };
+$('ts').oninput = e => { stop(); t = +e.target.value; drawAll(); };
+$('shS').onchange = $('shA').onchange = () => S && drawAll();
+$('apply').onclick = build;
+$('fn').addEventListener('keydown', e => { if (e.key === 'Enter') build(); });
+document.querySelectorAll('[data-f]').forEach(b => b.onclick = () => {
+  $('fn').value = b.dataset.f; [$('t0').value, $('t1').value] = b.dataset.r.split(','); build();
 });
-
-// Clic / arrastre sobre las gráficas para fijar el tiempo
 ['cX','cV','cA'].forEach(id => {
   const c = $(id);
   const mv = e => {
     const r = c.getBoundingClientRect();
-    t = Math.max(0, Math.min(P.T, (e.clientX - r.left - M.l)/(r.width - M.l - M.r)*P.T));
-    stop(); draw();
+    t = Math.max(S.t0, Math.min(S.t1, S.t0 + (e.clientX - r.left - M.l)/(r.width - M.l - M.r)*(S.t1 - S.t0)));
+    stop(); drawAll();
   };
-  c.addEventListener('pointerdown', e => { c.setPointerCapture(e.pointerId); drag = true; mv(e); });
+  c.addEventListener('pointerdown', e => { if (!S) return; c.setPointerCapture(e.pointerId); drag = true; mv(e); });
   c.addEventListener('pointermove', e => { if (drag) mv(e); });
   c.addEventListener('pointerup', () => drag = false);
 });
-window.addEventListener('resize', draw);
+window.addEventListener('resize', () => S && drawAll());
 
-readParams();
+build();
 </script>
 </body>
 </html>
