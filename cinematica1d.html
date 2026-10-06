@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cinemática 1D con aceleración constante</title>
+<style>
+  :root{--x:#2563eb;--v:#16a34a;--a:#dc2626;--bg:#f1f5f9;--ink:#0f172a;--grid:#e2e8f0}
+  *{box-sizing:border-box}
+  body{margin:0;padding:16px;font-family:system-ui,Segoe UI,sans-serif;background:var(--bg);color:var(--ink);
+       display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+  #side{flex:1 1 300px;max-width:380px}
+  #main{flex:3 1 520px;min-width:0}
+  .card{background:#fff;border:1px solid var(--grid);border-radius:10px;padding:12px 14px;margin-bottom:12px}
+  h1{font-size:18px;margin:0 0 12px;width:100%}
+  h2{font-size:14px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.04em;color:#475569}
+  label{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:6px 0;font-size:14px}
+  input[type=number]{width:90px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px}
+  input[type=range]{width:100%}
+  button,select{padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;background:#f8fafc;cursor:pointer;font-size:13px}
+  button:hover{background:#e2e8f0}
+  .row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  canvas{width:100%;display:block;background:#fff;border:1px solid var(--grid);border-radius:8px;margin-bottom:8px;touch-action:none}
+  #cT{height:150px;cursor:default}
+  .gr{height:175px;cursor:ew-resize}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  td{padding:4px 2px;border-bottom:1px solid var(--grid);vertical-align:top}
+  .cx{color:var(--x)}.cv{color:var(--v)}.ca{color:var(--a)}
+  .small{font-size:12px;color:#64748b;margin-top:6px}
+</style>
+</head>
+<body>
+<h1>Cinemática 1D con aceleración constante</h1>
+
+<div id="side">
+  <div class="card">
+    <h2>Parámetros</h2>
+    <label>Posición inicial x₀ (m) <input id="x0" type="number" step="0.5" value="0"></label>
+    <label>Velocidad inicial v₀ (m/s) <input id="v0" type="number" step="0.5" value="10"></label>
+    <label>Aceleración a (m/s²) <input id="a" type="number" step="0.5" value="-4"></label>
+    <label>Tiempo total T (s) <input id="T" type="number" step="1" min="1" value="6"></label>
+    <div class="row">
+      <button data-p="0,0,2,10">Desde el reposo</button>
+      <button data-p="0,10,-4,6">Inversión de sentido</button>
+      <button data-p="0,3,0,10">Velocidad constante</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Tiempo</h2>
+    <input id="ts" type="range" min="0" max="6" step="0.001" value="0">
+    <div class="row">
+      <button id="play">▶ Reproducir</button>
+      <button id="reset">⟲ Reiniciar</button>
+      <select id="speed">
+        <option value="0.25">0.25×</option><option value="0.5">0.5×</option>
+        <option value="1" selected>1×</option><option value="2">2×</option>
+      </select>
+    </div>
+    <label style="margin-top:10px"><span>Mostrar pendientes (derivadas)</span><input id="shS" type="checkbox" checked></label>
+    <label><span>Mostrar áreas (integrales)</span><input id="shA" type="checkbox" checked></label>
+    <div class="small">También puedes hacer clic o arrastrar sobre cualquiera de las tres gráficas.</div>
+  </div>
+
+  <div class="card">
+    <h2>Ecuaciones en el instante t</h2>
+    <table id="eq"></table>
+  </div>
+</div>
+
+<div id="main">
+  <canvas id="cT"></canvas>
+  <canvas id="cX" class="gr"></canvas>
+  <canvas id="cV" class="gr"></canvas>
+  <canvas id="cA" class="gr"></canvas>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const P = {x0:0, v0:10, a:-4, T:6};          // parámetros físicos
+let t = 0, playing = false, last = 0, drag = false, R;
+const M = {l:62, r:18, t:14, b:26};           // márgenes iguales => los tiempos quedan alineados
+
+// Modelo físico
+const X = s => P.x0 + P.v0*s + 0.5*P.a*s*s;
+const V = s => P.v0 + P.a*s;
+const A = () => P.a;
+
+const f2 = n => (+n.toFixed(2)).toString();
+const pr = n => n < 0 ? `(${f2(n)})` : f2(n);
+function nice(range, n){
+  const s = range/n, p = Math.pow(10, Math.floor(Math.log10(s))), q = s/p;
+  return (q < 1.5 ? 1 : q < 3.5 ? 2 : q < 7.5 ? 5 : 10) * p;
+}
+function setup(c){
+  const r = c.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+  c.width = r.width*d; c.height = r.height*d;
+  const g = c.getContext('2d'); g.setTransform(d,0,0,d,0,0);
+  return {g, w:r.width, h:r.height};
+}
+
+// Rangos de cada eje (incluye el punto donde v = 0 para ver el vértice de x(t))
+function ranges(){
+  const ts = [0, P.T];
+  if (P.a !== 0){ const tv = -P.v0/P.a; if (tv > 0 && tv < P.T) ts.push(tv); }
+  const xs = ts.map(X), vs = [V(0), V(P.T)];
+  const pad = (lo, hi) => { if (hi - lo < 1e-9){ lo -= 1; hi += 1; } const p = (hi-lo)*0.12; return [lo-p, hi+p]; };
+  return {
+    x: pad(Math.min(...xs), Math.max(...xs)),
+    v: pad(Math.min(0,...vs), Math.max(0,...vs)),
+    a: pad(Math.min(0,P.a), Math.max(0,P.a))
+  };
+}
+
+// ---------- Trayectoria ----------
+function drawTray(){
+  const {g, w, h} = setup($('cT'));
+  const [lo, hi] = R.x, pw = w - M.l - M.r;
+  const sx = x => M.l + (x-lo)/(hi-lo)*pw, y0 = h*0.68;
+  g.font = '11px system-ui'; g.textAlign = 'center'; g.textBaseline = 'top';
+  g.strokeStyle = '#94a3b8'; g.lineWidth = 1.5;
+  g.beginPath(); g.moveTo(M.l, y0); g.lineTo(w-M.r, y0); g.stroke();
+  const st = nice(hi-lo, 8);
+  for (let k = Math.ceil(lo/st); k*st <= hi; k++){
+    const x = k*st; g.beginPath(); g.moveTo(sx(x), y0-4); g.lineTo(sx(x), y0+4); g.stroke();
+    g.fillStyle = '#64748b'; g.fillText(+x.toFixed(4), sx(x), y0+8);
+  }
+  g.textAlign = 'left'; g.fillStyle = '#334155'; g.fillText('x (m)', 6, y0-6);
+  g.fillText('Trayectoria', 6, 6);
+  // posiciones a intervalos regulares (estroboscópico)
+  const dt = nice(P.T, 10);
+  for (let k = 0; k*dt <= P.T + 1e-9; k++){
+    const s = k*dt; g.beginPath(); g.arc(sx(X(s)), y0, 4, 0, 7);
+    g.fillStyle = s <= t ? '#2563eb' : '#cbd5e1'; g.fill();
+  }
+  // objeto
+  const xo = sx(X(t));
+  g.beginPath(); g.arc(xo, y0, 11, 0, 7); g.fillStyle = '#f59e0b'; g.fill();
+  g.strokeStyle = '#92400e'; g.lineWidth = 2; g.stroke();
+  // flechas (longitud relativa al máximo de cada magnitud)
+  const L = Math.min(w*0.2, 100);
+  const vmax = Math.max(Math.abs(V(0)), Math.abs(V(P.T)), 1e-9);
+  arrow(g, xo, y0-26, V(t)/vmax*L, '#16a34a', 'v');
+  arrow(g, xo, y0-48, P.a === 0 ? 0 : Math.sign(P.a)*L, '#dc2626', 'a');
+}
+function arrow(g, x, y, len, col, name){
+  g.strokeStyle = g.fillStyle = col; g.lineWidth = 3;
+  g.font = 'bold 13px system-ui'; g.textBaseline = 'middle';
+  if (Math.abs(len) < 2){ g.beginPath(); g.arc(x, y, 3, 0, 7); g.fill(); g.textAlign = 'left'; g.fillText(name+' = 0', x+8, y); return; }
+  const d = Math.sign(len);
+  g.beginPath(); g.moveTo(x, y); g.lineTo(x+len, y); g.stroke();
+  g.beginPath(); g.moveTo(x+len, y); g.lineTo(x+len-9*d, y-5); g.lineTo(x+len-9*d, y+5); g.closePath(); g.fill();
+  g.textAlign = d > 0 ? 'right' : 'left'; g.fillText(name, x - 6*d, y);
+}
+
+// ---------- Gráficas f(t) ----------
+function graph(c, f, rng, col, name, unit, o){
+  const {g, w, h} = setup(c);
+  const [lo, hi] = rng, pw = w-M.l-M.r, ph = h-M.t-M.b;
+  const sx = u => M.l + u/P.T*pw, sy = y => M.t + (hi-y)/(hi-lo)*ph;
+  g.font = '11px system-ui';
+  // cuadrícula horizontal
+  const sy_ = nice(hi-lo, 4); g.textAlign = 'right'; g.textBaseline = 'middle';
+  for (let k = Math.ceil(lo/sy_); k*sy_ <= hi; k++){
+    const y = k*sy_, z = k === 0;
+    g.strokeStyle = z ? '#94a3b8' : '#e2e8f0'; g.lineWidth = z ? 1.5 : 1;
+    g.beginPath(); g.moveTo(M.l, sy(y)); g.lineTo(w-M.r, sy(y)); g.stroke();
+    g.fillStyle = '#64748b'; g.fillText(+y.toFixed(4), M.l-6, sy(y));
+  }
+  // cuadrícula vertical (tiempo compartido)
+  const st = nice(P.T, 10); g.textAlign = 'center'; g.textBaseline = 'top';
+  for (let k = 0; k*st <= P.T + 1e-9; k++){
+    g.strokeStyle = '#e2e8f0'; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(sx(k*st), M.t); g.lineTo(sx(k*st), M.t+ph); g.stroke();
+    g.fillStyle = '#64748b'; g.fillText(+(k*st).toFixed(4), sx(k*st), M.t+ph+5);
+  }
+  g.textAlign = 'right'; g.fillStyle = '#64748b'; g.fillText('t (s)', w-M.r, M.t+ph+5);
+  g.save(); g.translate(13, M.t+ph/2); g.rotate(-Math.PI/2); g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = col; g.font = 'bold 12px system-ui'; g.fillText(`${name}(t)  [${unit}]`, 0, 0); g.restore();
+
+  // área bajo la curva (integral) de 0 a t
+  const N = 200;
+  if (o.area && $('shA').checked && t > 0){
+    g.fillStyle = col + '33'; g.beginPath(); g.moveTo(sx(0), sy(0));
+    for (let i = 0; i <= N; i++){ const u = t*i/N; g.lineTo(sx(u), sy(f(u))); }
+    g.lineTo(sx(t), sy(0)); g.closePath(); g.fill();
+  }
+  // curva
+  g.strokeStyle = col; g.lineWidth = 2.5; g.beginPath();
+  for (let i = 0; i <= N; i++){ const u = P.T*i/N; i ? g.lineTo(sx(u), sy(f(u))) : g.moveTo(sx(u), sy(f(u))); }
+  g.stroke();
+  // recta tangente (derivada)
+  if (o.slope && $('shS').checked){
+    const m = o.slope(t), d = P.T*0.18, y = f(t);
+    g.save(); g.beginPath(); g.rect(M.l, M.t, pw, ph); g.clip();
+    g.strokeStyle = '#7c3aed'; g.lineWidth = 2; g.setLineDash([6,4]);
+    g.beginPath(); g.moveTo(sx(t-d), sy(y-m*d)); g.lineTo(sx(t+d), sy(y+m*d)); g.stroke(); g.restore();
+  }
+  // cursor de tiempo
+  g.strokeStyle = '#334155'; g.lineWidth = 1.2; g.setLineDash([4,3]);
+  g.beginPath(); g.moveTo(sx(t), M.t); g.lineTo(sx(t), M.t+ph); g.stroke(); g.setLineDash([]);
+  g.beginPath(); g.arc(sx(t), sy(f(t)), 6, 0, 7); g.fillStyle = col; g.fill();
+  g.strokeStyle = '#fff'; g.lineWidth = 2; g.stroke();
+  g.fillStyle = col; g.font = 'bold 13px system-ui'; g.textAlign = 'right'; g.textBaseline = 'top';
+  g.fillText(`${name} = ${f2(f(t))} ${unit}`, w-M.r-4, M.t+4);
+}
+
+// ---------- Ecuaciones con valores sustituidos ----------
+function eqs(){
+  const {x0, v0, a} = P, x = X(t), v = V(t);
+  const dx = 0.5*(v0+v)*t;   // área (trapecio) bajo v(t)
+  $('eq').innerHTML = `
+  <tr><td colspan="2"><b>t = ${f2(t)} s</b></td></tr>
+  <tr><td class="cx"><b>x(t) = x₀ + v₀t + ½at²</b><br>= ${pr(x0)} + ${pr(v0)}·${f2(t)} + ½·${pr(a)}·${f2(t)}²</td>
+      <td class="cx"><b>${f2(x)} m</b></td></tr>
+  <tr><td class="cv"><b>v(t) = v₀ + at</b><br>= ${pr(v0)} + ${pr(a)}·${f2(t)}</td>
+      <td class="cv"><b>${f2(v)} m/s</b></td></tr>
+  <tr><td class="ca"><b>a(t) = a</b> (constante)</td><td class="ca"><b>${f2(a)} m/s²</b></td></tr>
+  <tr><td colspan="2" style="padding-top:10px"><b>Derivadas (pendientes)</b></td></tr>
+  <tr><td>v = dx/dt = v₀ + at</td><td>${f2(v)} m/s</td></tr>
+  <tr><td>a = dv/dt</td><td>${f2(a)} m/s²</td></tr>
+  <tr><td colspan="2" style="padding-top:10px"><b>Integrales (áreas con signo)</b></td></tr>
+  <tr><td>Δv = ∫a dt = a·t</td><td>${f2(a*t)} m/s</td></tr>
+  <tr><td>Δx = ∫v dt = ½(v₀+v)·t</td><td>${f2(dx)} m</td></tr>
+  <tr><td>x₀ + Δx = x(t)</td><td>${f2(x0+dx)} m</td></tr>`;
+}
+
+function draw(){
+  R = ranges();
+  drawTray();
+  graph($('cX'), X, R.x, '#2563eb', 'x', 'm',   {slope: V});
+  graph($('cV'), V, R.v, '#16a34a', 'v', 'm/s', {slope: A, area:true});
+  graph($('cA'), A, R.a, '#dc2626', 'a', 'm/s²',{area:true});
+  eqs();
+  $('ts').value = t;
+}
+
+// ---------- Interacción ----------
+function stop(){ playing = false; $('play').textContent = '▶ Reproducir'; }
+function loop(now){
+  if (!playing) return;
+  t += (now-last)/1000 * +$('speed').value; last = now;
+  if (t >= P.T){ t = P.T; stop(); }
+  draw(); if (playing) requestAnimationFrame(loop);
+}
+$('play').onclick = () => {
+  if (playing){ stop(); return; }
+  if (t >= P.T) t = 0;
+  playing = true; $('play').textContent = '⏸ Pausar'; last = performance.now(); requestAnimationFrame(loop);
+};
+$('reset').onclick = () => { stop(); t = 0; draw(); };
+$('ts').oninput = e => { stop(); t = +e.target.value; draw(); };
+$('shS').onchange = $('shA').onchange = draw;
+
+function readParams(){
+  P.x0 = +$('x0').value || 0; P.v0 = +$('v0').value || 0; P.a = +$('a').value || 0;
+  P.T = Math.max(1, +$('T').value || 1);
+  $('ts').max = P.T; t = Math.min(t, P.T); draw();
+}
+['x0','v0','a','T'].forEach(id => $(id).oninput = readParams);
+document.querySelectorAll('[data-p]').forEach(b => b.onclick = () => {
+  const [x0,v0,a,T] = b.dataset.p.split(',');
+  $('x0').value = x0; $('v0').value = v0; $('a').value = a; $('T').value = T;
+  stop(); t = 0; readParams();
+});
+
+// Clic / arrastre sobre las gráficas para fijar el tiempo
+['cX','cV','cA'].forEach(id => {
+  const c = $(id);
+  const mv = e => {
+    const r = c.getBoundingClientRect();
+    t = Math.max(0, Math.min(P.T, (e.clientX - r.left - M.l)/(r.width - M.l - M.r)*P.T));
+    stop(); draw();
+  };
+  c.addEventListener('pointerdown', e => { c.setPointerCapture(e.pointerId); drag = true; mv(e); });
+  c.addEventListener('pointermove', e => { if (drag) mv(e); });
+  c.addEventListener('pointerup', () => drag = false);
+});
+window.addEventListener('resize', draw);
+
+readParams();
+</script>
+</body>
+</html>
